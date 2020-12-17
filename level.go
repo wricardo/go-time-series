@@ -3,10 +3,12 @@ package timeseries
 import (
 	"log"
 	"time"
+
+	"github.com/jonboulle/clockwork"
 )
 
 type level struct {
-	clock       Clock
+	clock       clockwork.Clock
 	granularity time.Duration
 	length      int
 	end         time.Time
@@ -15,7 +17,7 @@ type level struct {
 	buckets     []int
 }
 
-func newLevel(clock Clock, granularity time.Duration, length int) level {
+func newLevel(clock clockwork.Clock, granularity time.Duration, length int) level {
 	level := level{clock: clock, granularity: granularity, length: length}
 	level.init()
 	return level

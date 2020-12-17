@@ -3,6 +3,8 @@ package timeseries
 import (
 	"errors"
 	"time"
+
+	"github.com/jonboulle/clockwork"
 )
 
 // Explanation
@@ -78,20 +80,6 @@ var defaultGranularities = []Granularity{
 	{time.Hour, 24},
 }
 
-// Clock specifies the needed time related functions used by the time series.
-// To use a custom clock implement the interface and pass it to the time series constructor.
-// The default clock uses time.Now()
-type Clock interface {
-	Now() time.Time
-}
-
-// defaultClock is used in case no clock is provided to the constructor.
-type defaultClock struct{}
-
-func (c *defaultClock) Now() time.Time {
-	return time.Now()
-}
-
 // Granularity describes the granularity for one level of the time series.
 // Count cannot be 0.
 type Granularity struct {
@@ -100,7 +88,7 @@ type Granularity struct {
 }
 
 type options struct {
-	clock         Clock
+	clock         clockwork.Clock
 	granularities []Granularity
 }
 
@@ -108,7 +96,7 @@ type options struct {
 type Option func(*options)
 
 // WithClock returns a Option that sets the clock used by the time series.
-func WithClock(c Clock) Option {
+func WithClock(c clockwork.Clock) Option {
 	return func(o *options) {
 		o.clock = c
 	}
@@ -122,7 +110,7 @@ func WithGranularities(g []Granularity) Option {
 }
 
 type TimeSeries struct {
-	clock       Clock
+	clock       clockwork.Clock
 	levels      []level
 	pending     int
 	pendingTime time.Time
@@ -137,7 +125,7 @@ func NewTimeSeries(os ...Option) (*TimeSeries, error) {
 		o(&opts)
 	}
 	if opts.clock == nil {
-		opts.clock = &defaultClock{}
+		opts.clock = clockwork.NewRealClock()
 	}
 	if opts.granularities == nil {
 		opts.granularities = defaultGranularities
@@ -145,7 +133,7 @@ func NewTimeSeries(os ...Option) (*TimeSeries, error) {
 	return newTimeSeries(opts.clock, opts.granularities)
 }
 
-func newTimeSeries(clock Clock, granularities []Granularity) (*TimeSeries, error) {
+func newTimeSeries(clock clockwork.Clock, granularities []Granularity) (*TimeSeries, error) {
 	err := checkGranularities(granularities)
 	if err != nil {
 		return nil, err
@@ -170,7 +158,7 @@ func checkGranularities(granularities []Granularity) error {
 	return nil
 }
 
-func createLevels(clock Clock, granularities []Granularity) []level {
+func createLevels(clock clockwork.Clock, granularities []Granularity) []level {
 	levels := make([]level, len(granularities))
 	for i := range granularities {
 		levels[i] = newLevel(clock, granularities[i].Granularity, granularities[i].Count)
